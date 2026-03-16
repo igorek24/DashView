@@ -46,8 +46,8 @@ DEFAULT_SETTINGS = {
     'gsensor_overlay_position': 'top-right',
     'auto_play_next': True,
     'show_thumbnails': True,
-    'show_preview_strip': True,
-    'auto_build_gps_cache': True,
+    'show_preview_strip': False,
+    'auto_build_gps_cache': False,
     'theme': 'auto',
 }
 
