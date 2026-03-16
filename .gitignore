@@ -1,0 +1,11 @@
+.obsidian/
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+*.bak
+.DS_Store

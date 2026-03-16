@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DashView</title>
+    <link rel="icon" type="image/svg+xml" href="/static/img/icon.svg">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/css/style.css?v=36">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="/static/img/icon.svg" alt="DashView" width="32" height="32">
+                    <h1>DashView</h1>
+                </div>
+                <button class="btn-icon" onclick="showSettings()" title="Settings">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Dashcam Info (populated dynamically) -->
+            <div class="dashcam-info" id="dashcam-info" style="display:none;">
+                <div class="dashcam-info-row">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                    <div class="dashcam-info-details">
+                        <span class="dashcam-model" id="dashcam-model">--</span>
+                        <span class="dashcam-fw" id="dashcam-fw">FW --</span>
+                    </div>
+                    <button class="btn-icon btn-icon-sm" onclick="showDashcamConfig()" title="Dashcam Configuration">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 15V3m0 12l-4-4m4 4l4-4M2 17l.621 2.485A2 2 0 004.561 21h14.878a2 2 0 001.94-1.515L22 17"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="stats-bar" id="stats-bar">
+                <div class="stat" onclick="showSDHealth()" style="cursor:pointer;" title="Click for SD card details">
+                    <span class="stat-value" id="stat-files">-</span>
+                    <span class="stat-label">Files</span>
+                </div>
+                <div class="stat" onclick="showSDHealth()" style="cursor:pointer;" title="Click for SD card details">
+                    <span class="stat-value" id="stat-size">-</span>
+                    <span class="stat-label">Total</span>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters">
+                <div class="filter-group">
+                    <label>Type</label>
+                    <div class="filter-chips" id="type-filter">
+                        <button class="chip active" data-value="all">All</button>
+                        <button class="chip chip-normal" data-value="normal">Normal</button>
+                        <button class="chip chip-event" data-value="event">Event</button>
+                        <button class="chip chip-parking" data-value="parking">Parking</button>
+                        <button class="chip chip-impact" data-value="impact">Impact</button>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Camera</label>
+                    <div class="filter-chips" id="camera-filter">
+                        <button class="chip active" data-value="all">All</button>
+                        <button class="chip" data-value="front">Front</button>
+                        <button class="chip" data-value="rear">Rear</button>
+                        <button class="chip chip-dual" data-value="dual">Dual</button>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Date</label>
+                    <select id="date-filter" class="select-input">
+                        <option value="">All dates</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Time Range</label>
+                    <div class="time-range-filter">
+                        <input type="time" id="time-from" class="time-input" value="" title="From">
+                        <span class="time-range-sep">&ndash;</span>
+                        <input type="time" id="time-to" class="time-input" value="" title="To">
+                        <button class="btn-icon btn-icon-xs" id="time-range-clear" onclick="clearTimeRange()" title="Clear" style="display:none;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View toggle -->
+            <div class="view-toggle">
+                <button class="view-tab active" id="view-files-tab" onclick="setView('files')">Files</button>
+                <button class="view-tab" id="view-trips-tab" onclick="setView('trips')">Trips</button>
+                <button class="view-tab-btn" id="batch-toggle" onclick="toggleBatchMode()" title="Select multiple files for batch export">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Batch action bar -->
+            <div class="batch-bar" id="batch-bar" style="display:none;">
+                <span id="batch-count">0 selected</span>
+                <div class="batch-actions">
+                    <button class="btn btn-ghost btn-xs" onclick="batchSelectAll()">All</button>
+                    <button class="btn btn-ghost btn-xs" onclick="batchSelectNone()">None</button>
+                    <button class="btn btn-export btn-xs" id="batch-export-btn" onclick="startBatchExport()" disabled>Export All</button>
+                </div>
+            </div>
+
+            <!-- File List -->
+            <div class="file-list-container">
+                <div class="file-list" id="file-list">
+                    <div class="empty-state" id="empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                        </svg>
+                        <p>No recordings found</p>
+                        <button class="btn btn-primary" onclick="showFolderPicker()">Select Folder</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Folder picker at bottom -->
+            <div class="sidebar-footer">
+                <button class="btn btn-ghost btn-full" onclick="showFolderPicker()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+                    <span id="current-folder">~/dashcam</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Mobile top bar -->
+        <div class="mobile-topbar" id="mobile-topbar">
+            <button class="btn-icon" onclick="toggleSidebar()">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
+            <div class="logo">
+                <img src="/static/img/icon.svg" alt="" width="20" height="20">
+                <span>DashView</span>
+            </div>
+            <button class="btn-icon" onclick="showSettings()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Sidebar overlay (mobile) -->
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+        <!-- Main Content -->
+        <main id="main-content">
+            <!-- Welcome screen -->
+            <div class="welcome-screen" id="welcome-screen">
+                <img src="/static/img/icon.svg" alt="DashView" width="80" height="80">
+                <h2>Welcome to DashView</h2>
+                <p>Select a recording from the sidebar to start playback</p>
+            </div>
+
+            <!-- Player area (hidden initially) -->
+            <div class="player-area" id="player-area" style="display:none;">
+                <!-- Top bar with video info -->
+                <div class="player-info-bar">
+                    <div class="video-info">
+                        <span class="badge" id="player-type-badge">Normal</span>
+                        <span class="badge badge-outline" id="player-camera-badge">Front</span>
+                        <span id="player-datetime"></span>
+                    </div>
+                    <div class="player-actions">
+                        <button class="btn-icon" id="toggle-pip-btn" title="Toggle Rear Camera PiP (P)" onclick="togglePiP()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="3" width="20" height="14" rx="2"/><rect x="12" y="9" width="8" height="6" rx="1"/>
+                            </svg>
+                        </button>
+                        <button class="btn-icon" id="toggle-overlay-btn" title="Toggle Overlays (O)" onclick="toggleOverlays()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>
+                            </svg>
+                        </button>
+                        <button class="btn-icon" id="toggle-dual-btn" title="Dual View / Side-by-Side (D)" onclick="toggleDualView()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="3" width="20" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/>
+                            </svg>
+                        </button>
+                        <button class="btn-icon" title="Screenshot (S)" onclick="takeScreenshot()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>
+                            </svg>
+                        </button>
+                        <button class="btn-icon" id="toggle-map-btn" title="Toggle Map (M)" onclick="toggleMap()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/>
+                                <path d="M8 2v16M16 6v16"/>
+                            </svg>
+                        </button>
+                        <button class="btn-icon" title="All GPS Tracks" onclick="showAllTracks()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 10-16 0c0 3 2.7 7 8 11.7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Video + Map container -->
+                <div class="media-container" id="media-container">
+                    <div class="video-wrapper" id="video-wrapper">
+                        <video id="video-player" preload="metadata">
+                            Your browser does not support video playback.
+                        </video>
+
+                        <!-- Rear camera PiP -->
+                        <div class="pip-container" id="pip-container" style="display:none;">
+                            <video id="pip-video" preload="metadata" muted></video>
+                            <div class="pip-label">REAR</div>
+                            <div class="pip-resize-handle" id="pip-resize"></div>
+                        </div>
+
+                        <!-- GPS Overlay (on video) -->
+                        <div class="video-hud" id="video-hud" style="display:none;">
+                            <!-- Speed display -->
+                            <div class="hud-speed" id="hud-speed">
+                                <span class="hud-speed-value" id="hud-speed-value">0</span>
+                                <span class="hud-speed-unit" id="hud-speed-unit">km/h</span>
+                            </div>
+                            <!-- Coordinates -->
+                            <div class="hud-coords" id="hud-coords">
+                                <span id="hud-lat">--</span>, <span id="hud-lng">--</span>
+                            </div>
+                            <!-- Heading -->
+                            <div class="hud-heading" id="hud-heading">
+                                <svg class="hud-compass" viewBox="0 0 40 40" width="32" height="32">
+                                    <circle cx="20" cy="20" r="18" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+                                    <polygon id="hud-compass-needle" points="20,4 23,22 20,20 17,22" fill="#f87171" transform="rotate(0 20 20)"/>
+                                    <text x="20" y="12" text-anchor="middle" fill="rgba(255,255,255,0.6)" font-size="6" font-weight="bold">N</text>
+                                </svg>
+                                <span id="hud-heading-value">--</span>
+                            </div>
+                            <!-- Altitude -->
+                            <div class="hud-altitude" id="hud-altitude" style="display:none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2L2 22h20L12 2z"/>
+                                </svg>
+                                <span id="hud-alt-value">--</span> m
+                            </div>
+                        </div>
+
+                        <!-- G-sensor overlay (on video) -->
+                        <div class="hud-gsensor" id="hud-gsensor" style="display:none;">
+                            <div class="hud-gsensor-title">G-Force</div>
+                            <div class="hud-gsensor-values">
+                                <div class="hud-g-axis"><span class="hud-g-label" style="color:#6366f1">X</span> <span id="hud-gx">0.00</span></div>
+                                <div class="hud-g-axis"><span class="hud-g-label" style="color:#34d399">Y</span> <span id="hud-gy">0.00</span></div>
+                                <div class="hud-g-axis"><span class="hud-g-label" style="color:#f87171">Z</span> <span id="hud-gz">0.00</span></div>
+                            </div>
+                            <!-- Mini G-force visualization -->
+                            <canvas id="hud-g-dial" width="60" height="60"></canvas>
+                        </div>
+
+                        <!-- Mini-map overlay (on video) -->
+                        <div class="hud-minimap" id="hud-minimap" style="display:none;">
+                            <div id="minimap"></div>
+                        </div>
+
+                        <!-- Custom overlay controls -->
+                        <div class="video-overlay" id="video-overlay">
+                            <button class="play-btn-large" id="play-btn-large" onclick="togglePlay()">
+                                <svg width="60" height="60" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="map-panel" id="map-panel" style="display:none;">
+                        <div id="map"></div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="controls-bar">
+                    <div class="progress-container" id="progress-container">
+                        <div class="preview-tooltip" id="preview-tooltip" style="display:none;">
+                            <div class="preview-thumb" id="preview-thumb"></div>
+                            <span class="preview-time" id="preview-time">0:00</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-buffered" id="progress-buffered"></div>
+                            <div class="trim-region" id="trim-region" style="display:none;"></div>
+                            <div class="progress-played" id="progress-played"></div>
+                            <div class="trim-handle trim-in" id="trim-in-handle" style="display:none;" title="In point (I)"></div>
+                            <div class="trim-handle trim-out" id="trim-out-handle" style="display:none;" title="Out point (O)"></div>
+                            <div class="event-markers" id="event-markers"></div>
+                            <div class="progress-handle" id="progress-handle"></div>
+                        </div>
+                    </div>
+                    <div class="controls-row">
+                        <div class="controls-left">
+                            <button class="btn-icon" onclick="togglePlay()" id="play-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" id="play-icon">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon" onclick="skipTime(-10)" title="Back 10s">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-8.36L1 10"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon" onclick="skipTime(10)" title="Forward 10s">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-5.64-8.36L23 10"/>
+                                </svg>
+                            </button>
+                            <div class="controls-divider"></div>
+                            <button class="btn-icon" onclick="stepFrame(-1)" title="Frame back (,)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 4v16"/><path d="M20 12L10 5v14l10-7z" transform="scale(-1,1) translate(-24,0)"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon" onclick="stepFrame(1)" title="Frame forward (.)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M18 4v16"/><path d="M4 12l10-7v14L4 12z" transform="scale(-1,1) translate(-24,0)"/>
+                                </svg>
+                            </button>
+                            <div class="controls-divider"></div>
+                            <button class="btn-icon btn-trim" onclick="setTrimIn()" title="Set in point (I)" id="btn-trim-in">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <path d="M7 4v16"/><path d="M7 12h14"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon btn-trim" onclick="setTrimOut()" title="Set out point (O)" id="btn-trim-out">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <path d="M17 4v16"/><path d="M3 12h14"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon btn-trim-clear" onclick="clearTrim()" title="Clear trim points" id="btn-trim-clear" style="display:none;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
+                            <span class="trim-display" id="trim-display" style="display:none;"></span>
+                            <span class="time-display">
+                                <span id="time-current">0:00</span>
+                                <span class="time-sep">/</span>
+                                <span id="time-duration">0:00</span>
+                            </span>
+                        </div>
+                        <div class="controls-right">
+                            <button class="btn btn-merge" onclick="showMergeModal()" title="Merge multiple clips">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>
+                                </svg>
+                                Merge
+                            </button>
+                            <button class="btn btn-export" onclick="showExportModal()" title="Export video" id="export-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                Export
+                            </button>
+                            <div class="controls-divider"></div>
+                            <div class="speed-control">
+                                <button class="btn-icon btn-speed" id="speed-btn" onclick="cycleSpeed()">1x</button>
+                            </div>
+                            <button class="btn-icon" onclick="toggleFullscreen()" title="Fullscreen">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- G-sensor timeline graph -->
+                <div class="data-panel" id="data-panel" style="display:none;">
+                    <div class="data-panel-header">
+                        <span class="data-panel-title">G-Sensor</span>
+                        <div class="data-panel-legend">
+                            <span style="color:#6366f1">X (Fwd/Back)</span>
+                            <span style="color:#34d399">Y (Left/Right)</span>
+                            <span style="color:#f87171">Z (Up/Down)</span>
+                            <span style="color:#fbbf24">Speed</span>
+                        </div>
+                    </div>
+                    <div class="gsensor-graph-wrap" id="gsensor-graph-wrap">
+                        <canvas id="gsensor-canvas"></canvas>
+                        <div class="gsensor-cursor" id="gsensor-cursor"></div>
+                        <div class="gsensor-tooltip" id="gsensor-tooltip" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Folder picker modal -->
+    <div class="modal-overlay" id="folder-modal" style="display:none;">
+        <div class="modal">
+            <h3>Set Recordings Folder</h3>
+            <p>Enter the path to your dashcam recordings folder:</p>
+            <input type="text" id="folder-input" class="text-input" placeholder="/path/to/dashcam/files">
+            <div class="folder-history" id="folder-history" style="display:none;">
+                <label>Recent folders</label>
+                <div class="folder-history-list" id="folder-history-list"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeFolderPicker()">Cancel</button>
+                <button class="btn btn-primary" onclick="setFolder()">Open</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings modal -->
+    <div class="modal-overlay" id="settings-modal" style="display:none;">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h3>Settings</h3>
+                <button class="btn-icon" onclick="closeSettings()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="settings-sections">
+                <!-- Overlay Settings -->
+                <div class="settings-section">
+                    <h4>Video Overlays</h4>
+                    <div class="setting-row">
+                        <label>Speed display</label>
+                        <input type="checkbox" id="set-overlay-speed" class="toggle" data-key="overlay_speed">
+                    </div>
+                    <div class="setting-row">
+                        <label>GPS coordinates</label>
+                        <input type="checkbox" id="set-overlay-coordinates" class="toggle" data-key="overlay_coordinates">
+                    </div>
+                    <div class="setting-row">
+                        <label>Compass / heading</label>
+                        <input type="checkbox" id="set-overlay-heading" class="toggle" data-key="overlay_heading">
+                    </div>
+                    <div class="setting-row">
+                        <label>Altitude</label>
+                        <input type="checkbox" id="set-overlay-altitude" class="toggle" data-key="overlay_altitude">
+                    </div>
+                    <div class="setting-row">
+                        <label>G-sensor values</label>
+                        <input type="checkbox" id="set-overlay-gsensor" class="toggle" data-key="overlay_gsensor">
+                    </div>
+                    <div class="setting-row">
+                        <label>Mini-map on video</label>
+                        <input type="checkbox" id="set-overlay-minimap" class="toggle" data-key="overlay_minimap">
+                    </div>
+                    <div class="setting-row">
+                        <label>Overlay opacity</label>
+                        <input type="range" id="set-overlay-opacity" min="0.3" max="1" step="0.05" data-key="overlay_opacity" class="range-input">
+                        <span class="range-value" id="opacity-value">0.85</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>Overlay scale</label>
+                        <input type="range" id="set-overlay-scale" min="0.6" max="1.5" step="0.1" data-key="overlay_scale" class="range-input">
+                        <span class="range-value" id="scale-value">1.0</span>
+                    </div>
+                </div>
+
+                <!-- Units -->
+                <div class="settings-section">
+                    <h4>Units</h4>
+                    <div class="setting-row">
+                        <label>Speed unit</label>
+                        <select id="set-speed-unit" class="select-input select-sm" data-key="speed_unit">
+                            <option value="kmh">km/h</option>
+                            <option value="mph">mph</option>
+                            <option value="kn">knots</option>
+                            <option value="ms">m/s</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Map -->
+                <div class="settings-section">
+                    <h4>Mini-Map</h4>
+                    <div class="setting-row">
+                        <label>Mini-map size</label>
+                        <input type="range" id="set-minimap-size" min="120" max="350" step="10" data-key="minimap_size" class="range-input">
+                        <span class="range-value" id="minimap-size-value">200</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>Mini-map zoom level</label>
+                        <input type="range" id="set-minimap-zoom" min="12" max="19" step="1" data-key="minimap_zoom" class="range-input">
+                        <span class="range-value" id="minimap-zoom-value">16</span>
+                    </div>
+                </div>
+
+                <!-- G-Sensor -->
+                <div class="settings-section">
+                    <h4>G-Sensor Graph</h4>
+                    <div class="setting-row">
+                        <label>Graph height (px)</label>
+                        <input type="range" id="set-gsensor-height" min="60" max="200" step="10" data-key="gsensor_graph_height" class="range-input">
+                        <span class="range-value" id="gsensor-height-value">100</span>
+                    </div>
+                </div>
+
+                <!-- Playback -->
+                <div class="settings-section">
+                    <h4>Playback</h4>
+                    <div class="setting-row">
+                        <label>Auto-play next clip</label>
+                        <input type="checkbox" id="set-auto-play-next" class="toggle" data-key="auto_play_next">
+                    </div>
+                </div>
+
+                <!-- Theme -->
+                <div class="settings-section">
+                    <h4>Appearance</h4>
+                    <div class="setting-row">
+                        <label>Theme</label>
+                        <select id="set-theme" class="select-input select-sm" data-key="theme">
+                            <option value="auto">Auto (follow system)</option>
+                            <option value="dark">Dark</option>
+                            <option value="light">Light</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Performance -->
+                <div class="settings-section">
+                    <h4>Performance</h4>
+                    <div class="setting-row">
+                        <label>Show thumbnails in file list</label>
+                        <input type="checkbox" id="set-show-thumbnails" class="toggle" data-key="show_thumbnails">
+                    </div>
+                    <div class="setting-row">
+                        <label>Seek bar preview on hover</label>
+                        <input type="checkbox" id="set-show-preview-strip" class="toggle" data-key="show_preview_strip">
+                    </div>
+                    <div class="setting-row">
+                        <label>Auto-build GPS tracks cache</label>
+                        <input type="checkbox" id="set-auto-build-gps-cache" class="toggle" data-key="auto_build_gps_cache">
+                    </div>
+                    <p style="font-size:11px;color:var(--text-muted);padding:0 0 4px;">Disable on low-resource systems. Thumbnails, previews, and GPS cache are generated via ffmpeg and cached to disk. GPS cache reads every video file on the SD card (can take 1-2 min on first run).</p>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="resetSettings()">Reset Defaults</button>
+                <button class="btn btn-primary" onclick="saveAndCloseSettings()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export modal -->
+    <div class="modal-overlay" id="export-modal" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Export Video</h3>
+                <button class="btn-icon" onclick="closeExportModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="export-file-info" id="export-file-info">--</div>
+
+            <div class="settings-sections">
+                <!-- Trim -->
+                <div class="settings-section" id="export-trim-section" style="display:none;">
+                    <h4 style="font-size:12px;color:var(--accent-hover);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Trim</h4>
+                    <div class="export-trim-info" id="export-trim-info"></div>
+                    <div class="setting-row">
+                        <label>Export trimmed clip only</label>
+                        <input type="checkbox" id="export-use-trim" class="toggle" checked>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="setting-row">
+                        <label>Include rear camera (PiP)</label>
+                        <input type="checkbox" id="export-pip" class="toggle" checked>
+                    </div>
+                    <div class="export-warning" id="export-reencode-warning" style="display:none;">
+                        <strong>Heads up:</strong> PiP and/or redaction requires decoding the full 4K HEVC stream, applying filters frame by frame, and re-encoding everything. Your CPU will sound like a jet engine preparing for takeoff. This is completely normal and may take a while. Without these options, export just copies the file (instant, silent, your CPU stays cool and unbothered).
+                    </div>
+                    <div class="setting-row" id="export-pip-options">
+                        <label>PiP position</label>
+                        <select id="export-pip-position" class="select-input select-sm">
+                            <option value="bottom-right">Bottom Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="top-left">Top Left</option>
+                        </select>
+                    </div>
+                    <div class="setting-row" id="export-pip-scale-row">
+                        <label>PiP size</label>
+                        <select id="export-pip-scale" class="select-input select-sm">
+                            <option value="0.2">Small (20%)</option>
+                            <option value="0.25" selected>Medium (25%)</option>
+                            <option value="0.33">Large (33%)</option>
+                            <option value="0.5">Half (50%)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h4 style="font-size:12px;color:var(--accent-hover);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Redaction</h4>
+                    <div class="setting-row">
+                        <div class="config-row-info">
+                            <label>Redact top bar</label>
+                            <span class="config-desc">Black out the custom text overlay (e.g., license plate, driver name)</span>
+                        </div>
+                        <input type="checkbox" id="export-redact-top" class="toggle">
+                    </div>
+                    <div class="setting-row">
+                        <div class="config-row-info">
+                            <label>Redact bottom bar</label>
+                            <span class="config-desc">Black out the date, time, speed, and camera model stamp</span>
+                        </div>
+                        <input type="checkbox" id="export-redact-bottom" class="toggle">
+                    </div>
+                    <div class="setting-row" id="export-redact-size-row" style="display:none;">
+                        <label>Bar height</label>
+                        <select id="export-redact-size" class="select-input select-sm">
+                            <option value="3">Small (3%)</option>
+                            <option value="4" selected>Medium (4%)</option>
+                            <option value="5">Large (5%)</option>
+                            <option value="7">Extra Large (7%)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="setting-row">
+                        <label>Remove audio</label>
+                        <input type="checkbox" id="export-no-audio" class="toggle">
+                    </div>
+                </div>
+            </div>
+
+            <div class="export-status" id="export-status" style="display:none;">
+                <div class="loading"></div>
+                <span id="export-status-text">Exporting...</span>
+            </div>
+
+            <div class="modal-actions" id="export-actions">
+                <button class="btn btn-ghost" onclick="closeExportModal()">Cancel</button>
+                <button class="btn btn-primary" id="export-start-btn" onclick="startExport()">Export</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Tracks / Heatmap modal -->
+    <div class="modal-overlay" id="tracks-modal" style="display:none;">
+        <div class="modal modal-fullmap">
+            <div class="modal-header">
+                <h3>All GPS Tracks</h3>
+                <div class="tracks-header-info">
+                    <span id="tracks-count">Loading...</span>
+                </div>
+                <button class="btn-icon" onclick="closeTracksModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="tracks-map"></div>
+        </div>
+    </div>
+
+    <!-- Merge modal -->
+    <div class="modal-overlay" id="merge-modal" style="display:none;">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h3>Merge Clips</h3>
+                <button class="btn-icon" onclick="closeMergeModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Select clips to merge into a single continuous video. Clips are joined in order using stream copy (fast, no re-encoding).</p>
+
+            <div class="merge-controls">
+                <button class="btn btn-ghost" onclick="mergeSelectAll()" id="merge-select-all-btn">Select All Visible</button>
+                <button class="btn btn-ghost" onclick="mergeSelectNone()">Clear Selection</button>
+                <span class="merge-count" id="merge-count">0 clips selected</span>
+            </div>
+
+            <div class="merge-list" id="merge-list"></div>
+
+            <div class="setting-row" style="margin-top:12px;">
+                <label>Remove audio</label>
+                <input type="checkbox" id="merge-no-audio" class="toggle">
+            </div>
+
+            <div class="export-status" id="merge-status" style="display:none;">
+                <div class="loading"></div>
+                <span id="merge-status-text">Merging...</span>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeMergeModal()">Cancel</button>
+                <button class="btn btn-primary" id="merge-start-btn" onclick="startMerge()">Merge & Download</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SD Health modal -->
+    <div class="modal-overlay" id="sd-health-modal" style="display:none;">
+        <div class="modal" style="width:480px;">
+            <div class="modal-header">
+                <h3>SD Card Health</h3>
+                <button class="btn-icon" onclick="document.getElementById('sd-health-modal').style.display='none'">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="sd-health-content"><div class="loading"></div></div>
+        </div>
+    </div>
+
+    <!-- Dashcam Config Editor modal -->
+    <div class="modal-overlay" id="config-modal" style="display:none;">
+        <div class="modal modal-config">
+            <div class="modal-header">
+                <div>
+                    <h3>Dashcam Configuration</h3>
+                    <p class="modal-subtitle" id="config-modal-subtitle">Edit settings and save to SD card</p>
+                </div>
+                <button class="btn-icon" onclick="closeConfigModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="config-editor" id="config-editor">
+                <!-- Populated dynamically by JS -->
+                <div class="empty-state">Loading config...</div>
+            </div>
+            <div class="modal-actions">
+                <a class="btn btn-ghost" href="/api/dashcam/config/backup" download title="Download config.ini backup">Backup</a>
+                <button class="btn btn-ghost" onclick="closeConfigModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveDashcamConfig()">Save to SD Card</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/static/js/app.js?v=36"></script>
+</body>
+</html>
