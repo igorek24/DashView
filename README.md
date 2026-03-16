@@ -204,7 +204,7 @@ Press `?` to show the shortcuts overlay.
 | `↓` | Next file |
 | `F` | Toggle fullscreen |
 | `M` | Toggle side-panel map |
-| `O` | Toggle all overlays |
+| `H` | Toggle all overlays (HUD) |
 | `P` | Toggle rear camera PiP |
 | `D` | Toggle dual view (side-by-side) |
 | `S` | Screenshot |
@@ -225,7 +225,7 @@ Press `?` to show the shortcuts overlay.
 No installation required for basic usage:
 
 ```bash
-cd dashcam-viewer
+cd dashview
 pip install -r requirements.txt
 python3 dashcam_viewer.py -d /path/to/dashcam/sd/card --open
 ```
@@ -395,7 +395,7 @@ Contributions are welcome! Areas where help is especially needed:
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/dashview.git
+git clone https://github.com/igorek24/dashview.git
 cd dashview
 
 # Install dependencies

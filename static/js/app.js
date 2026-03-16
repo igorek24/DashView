@@ -1518,7 +1518,7 @@ function setupKeyboard() {
             case 'm':
                 toggleMap();
                 break;
-            case 'o':
+            case 'h':
                 toggleOverlays();
                 break;
             case 'p':
@@ -2331,7 +2331,7 @@ function toggleShortcutsHelp() {
                 </div>
                 <div class="shortcut-group">
                     <h4>Overlays & Views</h4>
-                    <div class="shortcut-row"><kbd>O</kbd><span>Toggle overlays</span></div>
+                    <div class="shortcut-row"><kbd>H</kbd><span>Toggle overlays (HUD)</span></div>
                     <div class="shortcut-row"><kbd>P</kbd><span>Toggle PiP</span></div>
                     <div class="shortcut-row"><kbd>M</kbd><span>Toggle map</span></div>
                     <div class="shortcut-row"><kbd>D</kbd><span>Toggle dual view</span></div>
