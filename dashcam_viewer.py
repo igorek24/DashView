@@ -535,8 +535,9 @@ def scan_directory(root_path):
                         }
                     meta['filename'] = entry.name
                     meta['path'] = str(entry.relative_to(root))
-                    meta['size'] = entry.stat().st_size
-                    meta['size_human'] = _human_size(entry.stat().st_size)
+                    fstat = entry.stat()
+                    meta['size'] = fstat.st_size
+                    meta['size_human'] = _human_size(fstat.st_size)
                     gps_file = entry.with_suffix('.gps')
                     meta['has_gps'] = gps_file.exists() or has_embedded_gps(entry)
                     g_file = entry.with_suffix('.3gf')
@@ -696,6 +697,9 @@ def get_settings():
 @app.route('/api/settings', methods=['POST'])
 def update_settings():
     data = request.get_json()
+    if data.get('_reset'):
+        save_settings(dict(DEFAULT_SETTINGS))
+        return jsonify(dict(DEFAULT_SETTINGS))
     current = load_settings()
     for key in DEFAULT_SETTINGS:
         if key in data:
@@ -740,14 +744,16 @@ def list_files():
     camera = request.args.get('camera', 'all')
     date = request.args.get('date', '')
 
-    files = scan_directory(DASHCAM_ROOT)
+    all_files = scan_directory(DASHCAM_ROOT)
+    dates = sorted(set(f['date'] for f in all_files), reverse=True)
+
+    files = all_files
     if category != 'all':
         files = [f for f in files if f['category'] == category]
     if camera == 'dual':
-        # Only show files where both front and rear exist
         basenames = set()
         for f in files:
-            base = f['filename'][:-6]  # strip _XF.mp4 or _XR.mp4
+            base = f['filename'][:-6]
             basenames.add(base)
         dual_bases = set()
         for base in basenames:
@@ -761,7 +767,6 @@ def list_files():
     if date:
         files = [f for f in files if f['date'] == date]
 
-    dates = sorted(set(f['date'] for f in scan_directory(DASHCAM_ROOT)), reverse=True)
     return jsonify({'files': files, 'dates': dates})
 
 
@@ -870,8 +875,8 @@ def get_stats():
         'total_size': _human_size(total_size),
         'categories': categories,
         'date_range': {
-            'start': files[-1]['date'] if files else None,
-            'end': files[0]['date'] if files else None,
+            'start': files[0]['date'] if files else None,
+            'end': files[-1]['date'] if files else None,
         }
     })
 
@@ -1487,10 +1492,13 @@ def export_video():
         filters = []
 
         if include_pip and rear_path:
-            # For re-encoding, -ss after -i for frame accuracy
-            cmd += ['-i', full_path, '-i', rear_path]
+            # Apply -ss before each -i for both inputs to stay synced
             if has_trim and trim_start:
                 cmd += ['-ss', str(trim_start)]
+            cmd += ['-i', full_path]
+            if has_trim and trim_start:
+                cmd += ['-ss', str(trim_start)]
+            cmd += ['-i', rear_path]
             if trim_duration is not None:
                 cmd += ['-t', str(trim_duration)]
             # Scale rear and overlay onto front
@@ -1527,16 +1535,18 @@ def export_video():
             )
             last_label = 'rbot'
 
-        # Rename final output
-        if last_label not in ('0:v',):
-            # Replace last label with [vout]
-            last_filter = filters[-1]
-            filters[-1] = last_filter.rsplit('[', 1)[0] + '[vout]'
-            filter_str = ';'.join(filters)
-            cmd += ['-filter_complex', filter_str, '-map', '[vout]']
-        else:
-            filter_str = ';'.join(filters)
-            cmd += ['-filter_complex', filter_str]
+        # Build filter complex
+        if filters:
+            if last_label not in ('0:v',):
+                last_filter = filters[-1]
+                filters[-1] = last_filter.rsplit('[', 1)[0] + '[vout]'
+                filter_str = ';'.join(filters)
+                cmd += ['-filter_complex', filter_str, '-map', '[vout]']
+            else:
+                filter_str = ';'.join(filters)
+                cmd += ['-filter_complex', filter_str]
+        # If no filters but needs_reencode (e.g., trim-only with reencode flag),
+        # just map video directly — no filter_complex needed
 
         if not remove_audio:
             cmd += ['-map', '0:a?']
@@ -1593,8 +1603,24 @@ def export_video():
         return jsonify({'error': 'ffmpeg not found. Install it: sudo dnf install ffmpeg-free'}), 500
 
 
+def _cleanup_old_exports():
+    """Remove export temp dirs older than 1 hour."""
+    try:
+        tmp = tempfile.gettempdir()
+        import time
+        now = time.time()
+        for name in os.listdir(tmp):
+            if name.startswith(('dashview_export_', 'dashview_merge_', 'dashview_batch_')):
+                path = os.path.join(tmp, name)
+                if os.path.isdir(path) and now - os.path.getmtime(path) > 3600:
+                    shutil.rmtree(path, ignore_errors=True)
+    except Exception:
+        pass
+
+
 @app.route('/api/export/download/<filename>')
 def export_download(filename):
+    _cleanup_old_exports()
     """Download an exported video file."""
     export_dir = request.args.get('dir', '')
     if not export_dir or not os.path.isdir(export_dir):
@@ -1602,12 +1628,17 @@ def export_download(filename):
     # Security: only allow files in temp directories
     if not export_dir.startswith(tempfile.gettempdir()):
         abort(403)
-    file_path = os.path.join(export_dir, filename)
+    # Sanitize filename to prevent directory traversal
+    safe_name = os.path.basename(filename)
+    file_path = os.path.realpath(os.path.join(export_dir, safe_name))
+    if not file_path.startswith(os.path.realpath(export_dir)):
+        abort(403)
     if not os.path.isfile(file_path):
         abort(404)
+    mimetype = 'application/zip' if filename.endswith('.zip') else 'video/mp4'
     return send_file(
-        file_path, as_attachment=True, download_name=filename,
-        mimetype='video/mp4'
+        file_path, as_attachment=True, download_name=os.path.basename(file_path),
+        mimetype=mimetype
     )
 
 

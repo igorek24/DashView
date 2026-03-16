@@ -139,14 +139,14 @@ function showSettings() {
     applySettings();
     document.getElementById('settings-modal').style.display = 'flex';
 
-    // Live update range displays
+    // Live update range displays (use property to avoid stacking)
     document.querySelectorAll('.range-input').forEach(el => {
-        el.addEventListener('input', () => {
+        el.oninput = () => {
             const valueEl = el.nextElementSibling;
             if (valueEl && valueEl.classList.contains('range-value')) {
                 valueEl.textContent = el.value;
             }
-        });
+        };
     });
 }
 
@@ -189,7 +189,7 @@ async function resetSettings() {
     const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}), // Server will use defaults
+        body: JSON.stringify({ _reset: true }),
     });
     settings = await res.json();
     applySettings();
@@ -1310,9 +1310,6 @@ function toggleSidebar() {
 }
 
 // Close sidebar when a file is played on mobile
-const origPlayFile = playFile;
-// We'll just close sidebar inside playFile instead
-
 // --- Seek Bar Preview ---
 
 let previewStripUrl = null;
@@ -1402,8 +1399,8 @@ function setupGraphHover() {
             const gpsIdx = Math.min(Math.floor(progress * gpsData.length), gpsData.length - 1);
             const p = gpsData[gpsIdx];
             if (p) {
-                const speed = settings.speed_unit === 'mph' ? p.speed * 0.621371 : p.speed;
-                const unit = settings.speed_unit === 'mph' ? 'mph' : 'km/h';
+                const speed = convertSpeed(p.speed);
+                const unit = getSpeedUnitLabel();
                 html += ` <span style="color:#fbbf24">${Math.round(speed)} ${unit}</span>`;
             }
         }
@@ -2398,16 +2395,14 @@ function drawSpeedGraph(ctx, w, h, gpsPoints) {
     ctx.stroke();
 
     // Max speed label
-    const unit = settings.speed_unit === 'mph' ? 'mph' : 'km/h';
-    const displayMax = settings.speed_unit === 'mph' ? maxSpeed * 0.621371 : maxSpeed;
+    const unit = getSpeedUnitLabel();
+    const displayMax = convertSpeed(maxSpeed);
     ctx.fillStyle = 'rgba(251, 191, 36, 0.4)';
     ctx.font = '10px sans-serif';
     ctx.fillText(`${Math.round(displayMax)} ${unit}`, w - 60, 12);
 }
 
 // --- Multi-clip Merge ---
-
-let mergeSelected = new Set();
 
 function showMergeModal() {
     document.getElementById('merge-modal').style.display = 'flex';
